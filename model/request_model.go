@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -145,7 +147,7 @@ func NewRequest(url string, verify string, code int, timeout time.Duration, debu
 	} else {
 		if reqBody != "" {
 			method = "POST"
-			body = reqBody
+			body = tryBodyFromFile(reqBody)
 		}
 		for _, v := range reqHeaders {
 			getHeaderValue(v, headers)
@@ -281,4 +283,27 @@ func (r *RequestResults) SetID(chanID uint64, number uint64) {
 	id := fmt.Sprintf("%d_%d", chanID, number)
 	r.ID = id
 	r.ChanID = chanID
+}
+
+func tryBodyFromFile(body string) string {
+	if !strings.HasPrefix(body, "@") {
+		return body
+	}
+
+	filePath := strings.TrimPrefix(body, "@")
+	if filePath == "" {
+		return body
+	}
+	file, err := os.Open(filePath)
+	if err != nil {
+		return body
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+	dataBytes, err := ioutil.ReadAll(file)
+	if err == nil {
+		body = string(dataBytes)
+	}
+	return body
 }

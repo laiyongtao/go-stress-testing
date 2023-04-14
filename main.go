@@ -53,7 +53,7 @@ func init() {
 	flag.StringVar(&path, "p", path, "curl文件路径")
 	flag.StringVar(&verify, "v", verify, "验证方法 http 支持:statusCode、json webSocket支持:json")
 	flag.Var(&headers, "H", "自定义头信息传递给服务器 示例:-H 'Content-Type: application/json'")
-	flag.StringVar(&body, "data", body, "HTTP POST方式传送数据")
+	flag.StringVar(&body, "data", body, "HTTP POST方式传送数据; 支持@{file_path}的入参形式读取文件内容为请求体")
 	flag.IntVar(&maxCon, "m", maxCon, "单个host最大连接数")
 	flag.IntVar(&code, "code", code, "请求成功的状态码")
 	flag.BoolVar(&http2, "http2", http2, "是否开http2.0")
