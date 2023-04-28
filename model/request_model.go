@@ -76,18 +76,19 @@ type VerifyWebSocket func(request *Request, seq string, msg []byte) (code int, i
 
 // Request 请求数据
 type Request struct {
-	URL       string            // URL
-	Form      string            // http/webSocket/tcp
-	Method    string            // 方法 GET/POST/PUT
-	Headers   map[string]string // Headers
-	Body      string            // body
-	Verify    string            // 验证的方法
-	Timeout   time.Duration     // 请求超时时间
-	Debug     bool              // 是否开启Debug模式
-	MaxCon    int               // 每个连接的请求数
-	HTTP2     bool              // 是否使用http2.0
-	Keepalive bool              // 是否开启长连接
-	Code      int               // 验证的状态码
+	URL          string            // URL
+	Form         string            // http/webSocket/tcp
+	Method       string            // 方法 GET/POST/PUT
+	Headers      map[string]string // Headers
+	Body         string            // body
+	Verify       string            // 验证的方法
+	Timeout      time.Duration     // 请求超时时间
+	Debug        bool              // 是否开启Debug模式
+	MaxCon       int               // 每个连接的请求数
+	HTTP2        bool              // 是否使用http2.0
+	Keepalive    bool              // 是否开启长连接
+	Code         int               // 验证的状态码
+	BodyFromFile bool
 }
 
 // GetBody 获取请求数据
@@ -132,6 +133,7 @@ func NewRequest(url string, verify string, code int, timeout time.Duration, debu
 		headers = make(map[string]string)
 		body    string
 	)
+	var bodyFromFile bool
 	if path != "" {
 		var curl *CURL
 		curl, err = ParseTheFile(path)
@@ -147,7 +149,7 @@ func NewRequest(url string, verify string, code int, timeout time.Duration, debu
 	} else {
 		if reqBody != "" {
 			method = "POST"
-			body = tryBodyFromFile(reqBody)
+			body, bodyFromFile = tryBodyFromFile(reqBody)
 		}
 		for _, v := range reqHeaders {
 			getHeaderValue(v, headers)
@@ -203,18 +205,19 @@ func NewRequest(url string, verify string, code int, timeout time.Duration, debu
 		timeout = 30 * time.Second
 	}
 	request = &Request{
-		URL:       url,
-		Form:      form,
-		Method:    strings.ToUpper(method),
-		Headers:   headers,
-		Body:      body,
-		Verify:    verify,
-		Timeout:   timeout,
-		Debug:     debug,
-		MaxCon:    maxCon,
-		HTTP2:     http2,
-		Keepalive: keepalive,
-		Code:      code,
+		URL:          url,
+		Form:         form,
+		Method:       strings.ToUpper(method),
+		Headers:      headers,
+		Body:         body,
+		Verify:       verify,
+		Timeout:      timeout,
+		Debug:        debug,
+		MaxCon:       maxCon,
+		HTTP2:        http2,
+		Keepalive:    keepalive,
+		Code:         code,
+		BodyFromFile: bodyFromFile,
 	}
 	return
 }
@@ -243,7 +246,13 @@ func (r *Request) Print() {
 	}
 	result := fmt.Sprintf("request:\n form:%s \n url:%s \n method:%s \n headers:%v \n", r.Form, r.URL, r.Method,
 		r.Headers)
-	result = fmt.Sprintf("%s data:%v \n", result, r.Body)
+	printBody := r.Body
+	bodyLength := len(r.Body)
+	if r.BodyFromFile && bodyLength > 100 {
+		printBody = r.Body[:100]
+	}
+	result = fmt.Sprintf("%s bodyLength: %d data: %s \n", result, bodyLength, printBody)
+	//result = fmt.Sprintf("%s data:%v \n", result, r.Body)
 	result = fmt.Sprintf("%s verify:%s \n timeout:%s \n debug:%v \n", result, r.Verify, r.Timeout, r.Debug)
 	result = fmt.Sprintf("%s http2.0：%v \n keepalive：%v \n maxCon:%v ", result, r.HTTP2, r.Keepalive, r.MaxCon)
 	fmt.Println(result)
@@ -285,18 +294,18 @@ func (r *RequestResults) SetID(chanID uint64, number uint64) {
 	r.ChanID = chanID
 }
 
-func tryBodyFromFile(body string) string {
+func tryBodyFromFile(body string) (string, bool) {
 	if !strings.HasPrefix(body, "@") {
-		return body
+		return body, false
 	}
 
 	filePath := strings.TrimPrefix(body, "@")
 	if filePath == "" {
-		return body
+		return body, false
 	}
 	file, err := os.Open(filePath)
 	if err != nil {
-		return body
+		return body, false
 	}
 	defer func() {
 		_ = file.Close()
@@ -305,5 +314,5 @@ func tryBodyFromFile(body string) string {
 	if err == nil {
 		body = string(dataBytes)
 	}
-	return body
+	return body, true
 }
